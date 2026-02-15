@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Waterpolo Legends</title>
+<style>
+body { margin:0; background:#0b5ed7; overflow:hidden; font-family:Arial; }
+canvas { display:block; }
+#ui {
+  position:fixed; top:10px; left:10px;
+  color:white; font-size:18px;
+}
+#controls {
+  position:fixed; bottom:15px; width:100%;
+  display:flex; justify-content:space-around;
+}
+.btn {
+  width:70px; height:70px;
+  background:rgba(255,255,255,0.75);
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; user-select:none;
+}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="ui">
+  ⏱️ <span id="time">60</span>s |
+  🏆 <span id="score">0</span>
+</div>
+
+<div id="controls">
+  <div class="btn" id="left">⬅</div>
+  <div class="btn" id="pass">PASS</div>
+  <div class="btn" id="shoot">SHOOT</div>
+  <div class="btn" id="right">➡</div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+let time = 60;
+let score = 0;
+let gameOver = false;
+
+// Player
+let player = { x: canvas.width/2, y: canvas.height-120, r: 18 };
+
+// Teammates
+let mates = [
+  { x: canvas.width/2-100, y: canvas.height-220 },
+  { x: canvas.width/2+100, y: canvas.height-220 }
+];
+
+// Ball
+let ball = { x: player.x, y: player.y, vx:0, vy:0, owner:player, shooting:false };
+
+// Goal & goalkeeper
+let goal = { x: canvas.width/2-90, y: 40, w:180, h:20 };
+let keeper = { x: canvas.width/2, y: 60, dir:1 };
+
+function drawField(){
+  ctx.fillStyle="#1e90ff";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.strokeStyle="white";
+  ctx.lineWidth=4;
+  ctx.strokeRect(goal.x, goal.y, goal.w, goal.h);
+}
+
+function drawCircle(p,color,r){
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.arc(p.x,p.y,r,0,Math.PI*2);
+  ctx.fill();
+}
+
+function drawBall(){
+  ctx.fillStyle="white";
+  ctx.beginPath();
+  ctx.arc(ball.x,ball.y,7,0,Math.PI*2);
+  ctx.fill();
+}
+
+function reset(){
+  player.x = canvas.width/2;
+  player.y = canvas.height-120;
+  ball.owner = player;
+  ball.shooting = false;
+}
+
+function update(){
+  if(gameOver) return;
+
+  drawField();
+
+  // Keeper AI
+  keeper.x += keeper.dir * 2;
+  if(keeper.x < goal.x+20 || keeper.x > goal.x+goal.w-20)
+    keeper.dir *= -1;
+
+  // Ball logic
+  if(ball.shooting){
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // Goal
+    if(ball.y < goal.y+goal.h &&
+       ball.x > goal.x && ball.x < goal.x+goal.w){
+      score++;
+      reset();
+    }
+
+    // Save
+    if(Math.abs(ball.x-keeper.x)<20 && Math.abs(ball.y-keeper.y)<20){
+      reset();
+    }
+
+    if(ball.y<0) reset();
+  } else {
+    ball.x = ball.owner.x;
+    ball.y = ball.owner.y;
+  }
+
+  // Draw
+  drawCircle(player,"yellow",player.r);
+  mates.forEach(m=>drawCircle(m,"orange",16));
+  drawCircle(keeper,"red",16);
+  drawBall();
+
+  document.getElementById("score").innerText = score;
+}
+
+setInterval(()=>{
+  if(time>0) time--;
+  else gameOver=true;
+  document.getElementById("time").innerText=time;
+},1000);
+
+function loop(){
+  update();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// CONTROLS
+left.ontouchstart=()=>player.x-=30;
+right.ontouchstart=()=>player.x+=30;
+
+pass.ontouchstart=()=>{
+  ball.owner = mates[Math.floor(Math.random()*mates.length)];
+};
+
+shoot.ontouchstart=()=>{
+  if(!ball.shooting){
+    ball.shooting=true;
+    ball.vx=(Math.random()-0.5)*5;
+    ball.vy=-9;
+  }
+};
+</script>
+
+</body>
+</html>
