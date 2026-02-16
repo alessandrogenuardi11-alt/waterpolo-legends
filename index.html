@@ -9,7 +9,6 @@
 body{margin:0;background:#1e90ff;overflow:hidden;font-family:Arial}
 canvas{display:block}
 
-/* HOME */
 #home{
 position:fixed;top:50%;left:50%;
 transform:translate(-50%,-50%);
@@ -18,13 +17,11 @@ border-radius:15px;text-align:center;
 z-index:10;
 }
 
-/* UI */
 #ui{
 position:fixed;top:10px;left:10px;
 color:white;font-size:18px;
 }
 
-/* JOYSTICK */
 .joy{
 position:absolute;width:90px;height:90px;
 background:rgba(255,255,255,0.3);
@@ -36,7 +33,6 @@ background:white;border-radius:50%;
 position:absolute;left:27px;top:27px;
 }
 
-/* CONTROLS */
 .controlsY{position:fixed;bottom:130px;right:10px}
 .controlsR{position:fixed;top:130px;right:10px}
 
@@ -104,7 +100,6 @@ let keeperTop={
   dir:1,
   speed:2
 };
-
 let keeperBottom={
   x:goalBottom.x+goalBottom.w/2,
   y:goalBottom.y-15,
@@ -121,12 +116,10 @@ joyR.style.top=(goalTop.y+40)+"px";
 function startGame(m){
 mode=m;
 home.style.display="none";
-
 if(mode==="friend"){
-joyR.style.display="block";
-controlsR.style.display="block";
+  joyR.style.display="block";
+  controlsR.style.display="block";
 }
-
 setupTeams();
 loop();
 }
@@ -137,7 +130,6 @@ teamY=[
 {x:canvas.width/2-120,y:canvas.height-240},
 {x:canvas.width/2+120,y:canvas.height-240}
 ];
-
 teamR=(mode==="bot")?[
 {x:canvas.width/2,y:canvas.height/2},
 {x:canvas.width/2-140,y:canvas.height/2+60},
@@ -148,20 +140,13 @@ teamR=(mode==="bot")?[
 {x:canvas.width/2-140,y:canvas.height/2+60},
 {x:canvas.width/2+140,y:canvas.height/2+60}
 ];
-
 startY=JSON.parse(JSON.stringify(teamY));
 startR=JSON.parse(JSON.stringify(teamR));
-
 ctrlY=teamY[0];
 ctrlR=teamR[0];
-
 ball.owner="Y";
-ball.vx=0;
-ball.vy=0;
-
+ball.vx=0; ball.vy=0;
 midfield.style.display="none";
-
-/* reset portieri */
 keeperTop.x=goalTop.x+goalTop.w/2;
 keeperBottom.x=goalBottom.x+goalBottom.w/2;
 }
@@ -172,10 +157,8 @@ teamR=JSON.parse(JSON.stringify(startR));
 ctrlY=teamY[0];
 ctrlR=teamR[0];
 ball.owner="Y";
-ball.vx=0;
-ball.vy=0;
+ball.vx=0; ball.vy=0;
 midfield.style.display="none";
-
 keeperTop.x=goalTop.x+goalTop.w/2;
 keeperBottom.x=goalBottom.x+goalBottom.w/2;
 }
@@ -191,14 +174,9 @@ ctx.fill();
 
 function updateKeepers(){
 keeperTop.x+=keeperTop.speed*keeperTop.dir;
-if(keeperTop.x<goalTop.x+15||keeperTop.x>goalTop.x+goalTop.w-15){
-keeperTop.dir*=-1;
-}
-
+if(keeperTop.x<goalTop.x+15||keeperTop.x>goalTop.x+goalTop.w-15) keeperTop.dir*=-1;
 keeperBottom.x+=keeperBottom.speed*keeperBottom.dir;
-if(keeperBottom.x<goalBottom.x+15||keeperBottom.x>goalBottom.x+goalBottom.w-15){
-keeperBottom.dir*=-1;
-}
+if(keeperBottom.x<goalBottom.x+15||keeperBottom.x>goalBottom.x+goalBottom.w-15) keeperBottom.dir*=-1;
 }
 
 function loop(){
@@ -212,30 +190,22 @@ ctx.strokeRect(goalBottom.x,goalBottom.y,goalBottom.w,goalBottom.h);
 
 /* portieri */
 updateKeepers();
-
 ctx.fillStyle="red";
-ctx.beginPath();
-ctx.arc(keeperTop.x,keeperTop.y,14,0,Math.PI*2);
-ctx.fill();
-
+ctx.beginPath();ctx.arc(keeperTop.x,keeperTop.y,14,0,Math.PI*2);ctx.fill();
 ctx.fillStyle="yellow";
-ctx.beginPath();
-ctx.arc(keeperBottom.x,keeperBottom.y,14,0,Math.PI*2);
-ctx.fill();
+ctx.beginPath();ctx.arc(keeperBottom.x,keeperBottom.y,14,0,Math.PI*2);ctx.fill();
 
-/* BOT difesa */
+/* BOT: inseguimento SOLO se hai palla */
 if(mode==="bot" && ball.owner==="Y"){
 let closest=teamR.reduce((a,b)=>dist(b,ctrlY)<dist(a,ctrlY)?b:a);
 let dx=ctrlY.x-closest.x;
 let dy=ctrlY.y-closest.y;
 let d=Math.hypot(dx,dy);
-if(d>1){
-closest.x+=dx/d*1.3;
-closest.y+=dy/d*1.3;
-}
+if(d>1){closest.x+=dx/d*1.3;closest.y+=dy/d*1.3;}
 }
 
-/* RUBA PALLA */
+/* RUBA PALLA SOLO SE LA PALLA È ANCORA IN MANO */
+if(ball.owner==="Y"){
 teamY.forEach(y=>{
 teamR.forEach(r=>{
 if(dist(y,r)<25){
@@ -245,33 +215,33 @@ midfield.style.display="block";
 }
 });
 });
+}
 
 /* palla */
+if(ball.owner){
 let o=(ball.owner==="Y")?ctrlY:ctrlR;
 ball.x=o.x;
 ball.y=o.y-20;
+}else{
+ball.x+=ball.vx;
+ball.y+=ball.vy;
+}
 
 /* goal */
 if(ball.x>goalTop.x && ball.x<goalTop.x+goalTop.w &&
    ball.y>goalTop.y && ball.y<goalTop.y+goalTop.h){
-scoreY++;
-setupTeams();
+scoreY++; setupTeams();
 }
-
 if(ball.x>goalBottom.x && ball.x<goalBottom.x+goalBottom.w &&
    ball.y>goalBottom.y && ball.y<goalBottom.y+goalBottom.h){
-scoreR++;
-setupTeams();
+scoreR++; setupTeams();
 }
 
 /* disegno */
 teamY.forEach(p=>drawPlayer(p,"yellow"));
 teamR.forEach(p=>drawPlayer(p,"red"));
-
 ctx.fillStyle="white";
-ctx.beginPath();
-ctx.arc(ball.x,ball.y,7,0,Math.PI*2);
-ctx.fill();
+ctx.beginPath();ctx.arc(ball.x,ball.y,7,0,Math.PI*2);ctx.fill();
 
 scoreYEl.innerText=scoreY;
 scoreREl.innerText=scoreR;
@@ -302,14 +272,8 @@ function setupJoystick(id,move){
 let joy=document.getElementById(id);
 let stick=joy.firstElementChild;
 let active=false;
-
 joy.ontouchstart=()=>active=true;
-joy.ontouchend=()=>{
-active=false;
-stick.style.left="27px";
-stick.style.top="27px";
-};
-
+joy.ontouchend=()=>{active=false;stick.style.left="27px";stick.style.top="27px";};
 joy.ontouchmove=e=>{
 if(!active)return;
 let r=joy.getBoundingClientRect();
@@ -322,7 +286,6 @@ stick.style.top=45+y-17+"px";
 move(x,y);
 };
 }
-
 setupJoystick("joyY",(dx,dy)=>{ctrlY.x+=dx*0.08;ctrlY.y+=dy*0.08;});
 setupJoystick("joyR",(dx,dy)=>{if(mode==="friend"){ctrlR.x+=dx*0.08;ctrlR.y+=dy*0.08;}});
 
