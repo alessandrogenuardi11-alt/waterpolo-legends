@@ -27,6 +27,16 @@ color:white;
 font-size:18px;
 }
 
+#message{
+position:fixed;
+top:50%;left:50%;
+transform:translate(-50%,-50%);
+color:white;
+font-size:40px;
+font-weight:bold;
+display:none;
+}
+
 #joy{
 position:fixed;
 bottom:140px;
@@ -71,6 +81,8 @@ border-radius:8px;
 🟡 <span id="scoreY">0</span> - 🔴 <span id="scoreR">0</span>
 </div>
 
+<div id="message">CENTROCAMPO</div>
+
 <div id="joy"><div id="stick"></div></div>
 
 <div id="controls">
@@ -85,26 +97,28 @@ canvas.width=innerWidth;
 canvas.height=innerHeight;
 
 let mode="bot";
-let scoreY=0, scoreR=0;
+let scoreY=0,scoreR=0;
 
-let player={x:canvas.width/2,y:canvas.height-150};
+let playerStart={x:canvas.width/2,y:canvas.height-150};
+let player={...playerStart};
 
 let mates=[
-{x:canvas.width/2-100,y:canvas.height-230},
-{x:canvas.width/2+100,y:canvas.height-230}
+{x:canvas.width/2-120,y:canvas.height-230},
+{x:canvas.width/2+120,y:canvas.height-230}
+];
+
+let enemies=[
+{x:canvas.width/2,y:canvas.height/2},
+{x:canvas.width/2-150,y:canvas.height/2+60},
+{x:canvas.width/2+150,y:canvas.height/2+60}
 ];
 
 let ball={
 x:player.x,
 y:player.y-20,
-vx:0,
-vy:0,
-state:"attached",
-target:null
+vx:0,vy:0,
+state:"attached"
 };
-
-let keeperTop={x:canvas.width/2,y:40,dir:1};
-let keeperBottom={x:canvas.width/2,y:canvas.height-40,dir:1};
 
 function startGame(m){
 mode=m;
@@ -112,102 +126,95 @@ document.getElementById("menu").style.display="none";
 loop();
 }
 
-function drawCircle(x,y,r,c){
+function drawCircle(p,r,c){
 ctx.fillStyle=c;
 ctx.beginPath();
-ctx.arc(x,y,r,0,Math.PI*2);
+ctx.arc(p.x,p.y,r,0,Math.PI*2);
 ctx.fill();
 }
 
 function loop(){
 ctx.clearRect(0,0,canvas.width,canvas.height);
 
-// PORTE
-ctx.strokeStyle="white";
-ctx.strokeRect(canvas.width/2-100,20,200,20);
-ctx.strokeRect(canvas.width/2-100,canvas.height-40,200,20);
-
-// PORTIERI
-keeperTop.x+=keeperTop.dir*2;
-keeperBottom.x+=keeperBottom.dir*2;
-
-if(keeperTop.x<canvas.width/2-90||keeperTop.x>canvas.width/2+90) keeperTop.dir*=-1;
-if(keeperBottom.x<canvas.width/2-90||keeperBottom.x>canvas.width/2+90) keeperBottom.dir*=-1;
-
-drawCircle(keeperTop.x,keeperTop.y,14,"red");
-drawCircle(keeperBottom.x,keeperBottom.y,14,"yellow");
-
 // PALLA
 if(ball.state==="attached"){
 ball.x=player.x;
 ball.y=player.y-20;
-}
-else{
+}else{
 ball.x+=ball.vx;
 ball.y+=ball.vy;
 }
 
-// PASS completato
-if(ball.state==="pass" && ball.target){
-if(Math.hypot(ball.x-ball.target.x,ball.y-ball.target.y)<15){
-ball.state="attached";
-ball.vx=0;
-ball.vy=0;
-}
-}
+// BOT MOVIMENTO (solo il più vicino)
+if(mode==="bot"){
+let closest=null;
+let minDist=99999;
 
-// GOAL
-if(ball.y<40){
-scoreY++;
-reset();
+enemies.forEach(e=>{
+let d=Math.hypot(player.x-e.x,player.y-e.y);
+if(d<minDist){
+minDist=d;
+closest=e;
 }
-if(ball.y>canvas.height-40){
-scoreR++;
-reset();
+});
+
+// solo il più vicino si muove
+if(closest){
+let dx=player.x-closest.x;
+let dy=player.y-closest.y;
+let d=Math.hypot(dx,dy);
+closest.x+=dx/d*1.5;
+closest.y+=dy/d*1.5;
+
+// se ti tocca e hai palla
+if(d<25 && ball.state==="attached"){
+showMidfield();
+}
+}
 }
 
 // DISEGNO
-drawCircle(player.x,player.y,18,"yellow");
-mates.forEach(m=>drawCircle(m.x,m.y,18,"yellow"));
-drawCircle(ball.x,ball.y,7,"white");
-
-document.getElementById("scoreY").innerText=scoreY;
-document.getElementById("scoreR").innerText=scoreR;
+drawCircle(player,18,"yellow");
+mates.forEach(m=>drawCircle(m,18,"yellow"));
+if(mode==="bot"){
+enemies.forEach(e=>drawCircle(e,18,"red"));
+}
+drawCircle(ball,7,"white");
 
 requestAnimationFrame(loop);
 }
 
-function reset(){
-ball.state="attached";
-ball.vx=0;
-ball.vy=0;
-player.x=canvas.width/2;
-player.y=canvas.height-150;
-}
-
 function passBall(){
 if(ball.state!=="attached") return;
-
 let target=mates[0];
-
-ball.state="pass";
-ball.target=target;
-
 let dx=target.x-player.x;
 let dy=target.y-player.y;
 let d=Math.hypot(dx,dy);
-
+ball.state="pass";
 ball.vx=dx/d*6;
 ball.vy=dy/d*6;
 }
 
 function shoot(){
 if(ball.state!=="attached") return;
-
 ball.state="shot";
-ball.target=null;
 ball.vx=0;
 ball.vy=-10;
+}
+
+function showMidfield(){
+document.getElementById("message").style.display="block";
+resetPositions();
+setTimeout(()=>{
+document.getElementById("message").style.display="none";
+},1500);
+}
+
+function resetPositions(){
+player={...playerStart};
+ball.state="attached";
+ball.vx=0;
+ball.vy=0;
 }
 
 // JOYSTICK
