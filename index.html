@@ -9,7 +9,6 @@
 body{margin:0;background:#1e90ff;font-family:Arial;overflow:hidden}
 canvas{display:block}
 
-/* MENU */
 #menu{
 position:fixed;
 top:50%;left:50%;
@@ -28,26 +27,22 @@ color:white;
 font-size:18px;
 }
 
-/* JOYSTICK */
 #joy{
 position:fixed;
 bottom:140px;
 left:30px;
-width:90px;
-height:90px;
+width:90px;height:90px;
 background:rgba(255,255,255,0.3);
 border-radius:50%;
 }
 #stick{
-width:35px;
-height:35px;
+width:35px;height:35px;
 background:white;
 border-radius:50%;
 position:absolute;
 left:27px;top:27px;
 }
 
-/* CONTROLS */
 #controls{
 position:fixed;
 bottom:140px;
@@ -84,36 +79,35 @@ border-radius:8px;
 </div>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+canvas.width=innerWidth;
+canvas.height=innerHeight;
 
-let mode = "bot";
-let scoreY = 0, scoreR = 0;
+let mode="bot";
+let scoreY=0, scoreR=0;
 
-// giocatore
-let player = { x: canvas.width/2, y: canvas.height-150 };
+let player={x:canvas.width/2,y:canvas.height-150};
 
-// compagni
-let mates = [
-  { x: canvas.width/2-100, y: canvas.height-230 },
-  { x: canvas.width/2+100, y: canvas.height-230 }
+let mates=[
+{x:canvas.width/2-100,y:canvas.height-230},
+{x:canvas.width/2+100,y:canvas.height-230}
 ];
 
-// palla
-let ball = { x: player.x, y: player.y-20, vx:0, vy:0, free:false };
+let ball={
+x:player.x,
+y:player.y-20,
+vx:0,
+vy:0,
+state:"attached",
+target:null
+};
 
-// portieri
-let keeperTop = { x: canvas.width/2, y: 40, dir:1 };
-let keeperBottom = { x: canvas.width/2, y: canvas.height-40, dir:1 };
-
-// porte
-const goalTopY = 40;
-const goalBottomY = canvas.height-40;
+let keeperTop={x:canvas.width/2,y:40,dir:1};
+let keeperBottom={x:canvas.width/2,y:canvas.height-40,dir:1};
 
 function startGame(m){
-mode = m;
+mode=m;
 document.getElementById("menu").style.display="none";
 loop();
 }
@@ -128,41 +122,51 @@ ctx.fill();
 function loop(){
 ctx.clearRect(0,0,canvas.width,canvas.height);
 
-// porte
+// PORTE
 ctx.strokeStyle="white";
 ctx.strokeRect(canvas.width/2-100,20,200,20);
 ctx.strokeRect(canvas.width/2-100,canvas.height-40,200,20);
 
-// portieri movimento
-keeperTop.x += keeperTop.dir*2;
-keeperBottom.x += keeperBottom.dir*2;
+// PORTIERI
+keeperTop.x+=keeperTop.dir*2;
+keeperBottom.x+=keeperBottom.dir*2;
 
-if(keeperTop.x < canvas.width/2-90 || keeperTop.x > canvas.width/2+90) keeperTop.dir*=-1;
-if(keeperBottom.x < canvas.width/2-90 || keeperBottom.x > canvas.width/2+90) keeperBottom.dir*=-1;
+if(keeperTop.x<canvas.width/2-90||keeperTop.x>canvas.width/2+90) keeperTop.dir*=-1;
+if(keeperBottom.x<canvas.width/2-90||keeperBottom.x>canvas.width/2+90) keeperBottom.dir*=-1;
 
-drawCircle(keeperTop.x, keeperTop.y, 14, "red");
-drawCircle(keeperBottom.x, keeperBottom.y, 14, "yellow");
+drawCircle(keeperTop.x,keeperTop.y,14,"red");
+drawCircle(keeperBottom.x,keeperBottom.y,14,"yellow");
 
-// palla
-if(!ball.free){
-ball.x = player.x;
-ball.y = player.y-20;
-}else{
-ball.x += ball.vx;
-ball.y += ball.vy;
+// PALLA
+if(ball.state==="attached"){
+ball.x=player.x;
+ball.y=player.y-20;
+}
+else{
+ball.x+=ball.vx;
+ball.y+=ball.vy;
 }
 
-// goal
-if(ball.y < goalTopY){
+// PASS completato
+if(ball.state==="pass" && ball.target){
+if(Math.hypot(ball.x-ball.target.x,ball.y-ball.target.y)<15){
+ball.state="attached";
+ball.vx=0;
+ball.vy=0;
+}
+}
+
+// GOAL
+if(ball.y<40){
 scoreY++;
 reset();
 }
-if(ball.y > goalBottomY){
+if(ball.y>canvas.height-40){
 scoreR++;
 reset();
 }
 
-// disegno
+// DISEGNO
 drawCircle(player.x,player.y,18,"yellow");
 mates.forEach(m=>drawCircle(m.x,m.y,18,"yellow"));
 drawCircle(ball.x,ball.y,7,"white");
@@ -174,64 +178,57 @@ requestAnimationFrame(loop);
 }
 
 function reset(){
-ball.free=false;
+ball.state="attached";
 ball.vx=0;
 ball.vy=0;
-player.x = canvas.width/2;
-player.y = canvas.height-150;
+player.x=canvas.width/2;
+player.y=canvas.height-150;
 }
 
-// PASSA = palla al compagno
 function passBall(){
-if(ball.free) return;
+if(ball.state!=="attached") return;
 
-let target = mates[0];
-ball.free = true;
+let target=mates[0];
 
-let dx = target.x - player.x;
-let dy = target.y - player.y;
-let d = Math.hypot(dx,dy);
+ball.state="pass";
+ball.target=target;
 
-ball.vx = dx/d * 6;
-ball.vy = dy/d * 6;
+let dx=target.x-player.x;
+let dy=target.y-player.y;
+let d=Math.hypot(dx,dy);
 
-let interval = setInterval(()=>{
-if(Math.hypot(ball.x-target.x, ball.y-target.y) < 15){
-ball.free = false;
-ball.vx = 0;
-ball.vy = 0;
-clearInterval(interval);
-}
-},16);
+ball.vx=dx/d*6;
+ball.vy=dy/d*6;
 }
 
-// TIRA = verso la porta
 function shoot(){
-if(ball.free) return;
-ball.free = true;
-ball.vx = 0;
-ball.vy = -10;
+if(ball.state!=="attached") return;
+
+ball.state="shot";
+ball.target=null;
+ball.vx=0;
+ball.vy=-10;
 }
 
 // JOYSTICK
-const joy = document.getElementById("joy");
-const stick = document.getElementById("stick");
-let active = false;
+const joy=document.getElementById("joy");
+const stick=document.getElementById("stick");
+let active=false;
 
-joy.ontouchstart = ()=> active=true;
-joy.ontouchend = ()=>{
+joy.ontouchstart=()=>active=true;
+joy.ontouchend=()=>{
 active=false;
 stick.style.left="27px";
 stick.style.top="27px";
 };
 
-joy.ontouchmove = e=>{
-if(!active) return;
-let r = joy.getBoundingClientRect();
-let x = e.touches[0].clientX - r.left - 45;
-let y = e.touches[0].clientY - r.top - 45;
-player.x += x*0.08;
-player.y += y*0.08;
+joy.ontouchmove=e=>{
+if(!active)return;
+let r=joy.getBoundingClientRect();
+let x=e.touches[0].clientX-r.left-45;
+let y=e.touches[0].clientY-r.top-45;
+player.x+=x*0.08;
+player.y+=y*0.08;
 };
 </script>
 </body>
