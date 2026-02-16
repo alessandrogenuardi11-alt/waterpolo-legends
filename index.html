@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,40 +21,24 @@ color:white;font-size:18px;
 }
 
 .joy{
-position:fixed;
-width:100px;height:100px;
+position:absolute;width:90px;height:90px;
 background:rgba(255,255,255,0.3);
 border-radius:50%;
-left:50%;transform:translateX(-50%);
 }
-#joyBottom{bottom:20px}
-#joyTop{top:20px}
-
 .stick{
-width:40px;height:40px;
+width:35px;height:35px;
 background:white;border-radius:50%;
-position:absolute;left:30px;top:30px;
+position:absolute;left:27px;top:27px;
 }
-
-.controls{
-position:fixed;right:10px;
-display:flex;flex-direction:column;
-}
-#controlsBottom{bottom:20px}
-#controlsTop{top:20px}
 
 button{
-padding:12px;
-margin:6px;
-border-radius:10px;
-font-size:14px;
+position:fixed;
+right:15px;
+padding:10px;
+border-radius:8px;
 }
-
-#restart{
-position:fixed;top:50%;left:50%;
-transform:translate(-50%,-50%);
-display:none;
-}
+#shootY{bottom:40px}
+#shootR{top:40px}
 </style>
 </head>
 
@@ -62,34 +46,24 @@ display:none;
 
 <div id="home">
 <h2>Waterpolo Legends</h2>
-<button onclick="startGame('bot')">🤖 Gioca contro BOT</button><br>
-<button onclick="startGame('friend')">👬 Gioca contro AMICO</button>
+<button onclick="startGame('bot')">🤖 BOT</button><br><br>
+<button onclick="startGame('friend')">👬 AMICO</button>
 </div>
 
 <canvas id="game"></canvas>
 
 <div id="ui">
-⏱️ <span id="time">60</span> |
 🟡 <span id="scoreY">0</span> - 🔴 <span id="scoreR">0</span>
 </div>
 
-<!-- JOYSTICK GIALLI (porta tua) -->
-<div id="joyBottom" class="joy"><div id="stickBottom" class="stick"></div></div>
-<div id="controlsBottom" class="controls">
-<button onclick="passBall('Y')">PASSA</button>
-<button onclick="shootBall('Y')">TIRA</button>
-</div>
+<!-- JOYSTICK GIALLI (porta bassa) -->
+<div id="joyY" class="joy"><div class="stick"></div></div>
 
-<!-- JOYSTICK ROSSI (porta avversaria) -->
-<div id="joyTop" class="joy" style="display:none;">
-<div id="stickTop" class="stick"></div>
-</div>
-<div id="controlsTop" class="controls" style="display:none;">
-<button onclick="passBall('R')">PASSA</button>
-<button onclick="shootBall('R')">TIRA</button>
-</div>
+<!-- JOYSTICK ROSSI (porta alta) -->
+<div id="joyR" class="joy" style="display:none"><div class="stick"></div></div>
 
-<button id="restart" onclick="location.reload()">Ricomincia</button>
+<button id="shootY" onclick="shoot('Y')">TIRA</button>
+<button id="shootR" onclick="shoot('R')" style="display:none">TIRA</button>
 
 <script>
 const canvas=document.getElementById("game");
@@ -98,30 +72,41 @@ canvas.width=innerWidth;
 canvas.height=innerHeight;
 
 let mode="bot";
-let time=60,scoreY=0,scoreR=0;
-let teamY=[],teamR=[],ball;
-let controlledY,controlledR;
+let scoreY=0,scoreR=0;
 
-const goalTop={x:canvas.width/2-100,y:30,w:200,h:20};
-const goalBottom={x:canvas.width/2-100,y:canvas.height-50,w:200,h:20};
+let teamY=[],teamR=[],ball;
+let ctrlY,ctrlR;
+
+const goalTop={x:canvas.width/2-100,y:20,w:200,h:30};
+const goalBottom={x:canvas.width/2-100,y:canvas.height-50,w:200,h:30};
+
+// posizione joystick nelle porte
+document.getElementById("joyY").style.left=goalBottom.x+55+"px";
+document.getElementById("joyY").style.top=goalBottom.y-100+"px";
+
+document.getElementById("joyR").style.left=goalTop.x+55+"px";
+document.getElementById("joyR").style.top=goalTop.y+40+"px";
 
 function startGame(m){
 mode=m;
 document.getElementById("home").style.display="none";
+
 if(mode==="friend"){
-document.getElementById("joyTop").style.display="block";
-document.getElementById("controlsTop").style.display="flex";
+document.getElementById("joyR").style.display="block";
+document.getElementById("shootR").style.display="block";
 }
-resetAll();
+
+reset();
 loop();
 }
 
-function resetAll(){
+function reset(){
 teamY=[
-{x:canvas.width/2,y:canvas.height-140},
+{x:canvas.width/2,y:canvas.height-150},
 {x:canvas.width/2-120,y:canvas.height-220},
 {x:canvas.width/2+120,y:canvas.height-220}
 ];
+
 teamR=(mode==="bot")?[
 {x:canvas.width/2,y:canvas.height/2},
 {x:canvas.width/2-140,y:canvas.height/2+60},
@@ -132,16 +117,19 @@ teamR=(mode==="bot")?[
 {x:canvas.width/2-140,y:canvas.height/2+60},
 {x:canvas.width/2+140,y:canvas.height/2+60}
 ];
-controlledY=teamY[0];
-controlledR=teamR[0];
+
+ctrlY=teamY[0];
+ctrlR=teamR[0];
 ball={owner:"Y"};
 }
 
-function drawPlayer(p,color){
+function distance(a,b){
+return Math.hypot(a.x-b.x,a.y-b.y);
+}
+
+function draw(p,color){
 ctx.fillStyle=color;
 ctx.beginPath();ctx.arc(p.x,p.y,18,0,Math.PI*2);ctx.fill();
-ctx.fillStyle="#f2c9a0";
-ctx.beginPath();ctx.arc(p.x,p.y-24,9,0,Math.PI*2);ctx.fill();
 }
 
 function loop(){
@@ -153,81 +141,90 @@ ctx.strokeStyle="white";
 ctx.strokeRect(goalTop.x,goalTop.y,goalTop.w,goalTop.h);
 ctx.strokeRect(goalBottom.x,goalBottom.y,goalBottom.w,goalBottom.h);
 
-// palla
-let owner=ball.owner==="Y"?controlledY:controlledR;
+// BOT: si muove SOLO il più vicino quando hai palla
+if(mode==="bot" && ball.owner==="Y"){
+let closest=teamR.reduce((a,b)=>{
+return distance(b,ctrlY)<distance(a,ctrlY)?b:a;
+});
+let dx=ctrlY.x-closest.x;
+let dy=ctrlY.y-closest.y;
+let d=Math.hypot(dx,dy);
+if(d>1){
+closest.x+=dx/d*1.2;
+closest.y+=dy/d*1.2;
+}
+}
+
+// RUBA PALLA
+teamY.forEach(y=>{
+teamR.forEach(r=>{
+if(distance(y,r)<25){
+ball.owner=(ball.owner==="Y")?"R":"Y";
+ctrlY=y;
+ctrlR=r;
+}
+});
+});
+
+// palla segue proprietario
+let owner=(ball.owner==="Y")?ctrlY:ctrlR;
 ball.x=owner.x;
 ball.y=owner.y-20;
 
+// gol
+if(ball.y<goalTop.y+goalTop.h){
+scoreY++;reset();
+}
+if(ball.y>goalBottom.y){
+scoreR++;reset();
+}
+
 // disegno
-teamY.forEach(p=>drawPlayer(p,"yellow"));
-teamR.forEach(p=>drawPlayer(p,"red"));
+teamY.forEach(p=>draw(p,"yellow"));
+teamR.forEach(p=>draw(p,"red"));
 
 ctx.fillStyle="white";
 ctx.beginPath();ctx.arc(ball.x,ball.y,7,0,Math.PI*2);ctx.fill();
 
+document.getElementById("scoreY").innerText=scoreY;
+document.getElementById("scoreR").innerText=scoreR;
+
 requestAnimationFrame(loop);
 }
 
-// PASSA
-function passBall(team){
-let arr=team==="Y"?teamY:teamR;
-let current=team==="Y"?controlledY:controlledR;
-let target=arr.find(p=>p!==current);
-if(team==="Y") controlledY=target;
-else controlledR=target;
-ball.owner=team;
-}
-
-// TIRA
-function shootBall(team){
-if(team==="Y"){
-scoreY++;
-resetAll();
-}else{
-scoreR++;
-resetAll();
-}
-document.getElementById("scoreY").innerText=scoreY;
-document.getElementById("scoreR").innerText=scoreR;
-}
-
-// JOYSTICK
-function setupJoystick(joyId,stickId,move){
-let joy=document.getElementById(joyId);
-let stick=document.getElementById(stickId);
+// joystick
+function setup(id,move){
+let joy=document.getElementById(id);
+let stick=joy.firstElementChild;
 let active=false;
 
 joy.ontouchstart=()=>active=true;
 joy.ontouchend=()=>{
 active=false;
-stick.style.left="30px";
-stick.style.top="30px";
+stick.style.left="27px";
+stick.style.top="27px";
 };
 
 joy.ontouchmove=e=>{
 if(!active)return;
 let r=joy.getBoundingClientRect();
-let x=e.touches[0].clientX-r.left-50;
-let y=e.touches[0].clientY-r.top-50;
+let x=e.touches[0].clientX-r.left-45;
+let y=e.touches[0].clientY-r.top-45;
 let d=Math.hypot(x,y);
-if(d>40){x=x/d*40;y=y/d*40;}
-stick.style.left=50+x-20+"px";
-stick.style.top=50+y-20+"px";
+if(d>35){x=x/d*35;y=y/d*35;}
+stick.style.left=45+x-17+"px";
+stick.style.top=45+y-17+"px";
 move(x,y);
 };
 }
 
-setupJoystick("joyBottom","stickBottom",(dx,dy)=>{
-controlledY.x+=dx*0.1;
-controlledY.y+=dy*0.1;
-});
+setup("joyY",(dx,dy)=>{ctrlY.x+=dx*0.08;ctrlY.y+=dy*0.08;});
+setup("joyR",(dx,dy)=>{if(mode==="friend"){ctrlR.x+=dx*0.08;ctrlR.y+=dy*0.08;}});
 
-setupJoystick("joyTop","stickTop",(dx,dy)=>{
-if(mode==="friend"){
-controlledR.x+=dx*0.1;
-controlledR.y+=dy*0.1;
+function shoot(team){
+if(team==="Y") ball.y-=60;
+else ball.y+=60;
 }
-});
 </script>
 </body>
 </html>
