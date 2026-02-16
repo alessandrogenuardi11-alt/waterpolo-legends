@@ -77,7 +77,7 @@ const goalBottom={x:canvas.width/2-100,y:canvas.height-50,w:200,h:20};
 let keeperTop={x:canvas.width/2,y:80,dir:1};
 let keeperBottom={x:canvas.width/2,y:canvas.height-80,dir:1};
 
-// SQUADRE
+// SQUADRE E PALLA
 let teamY,teamR,controlled,ball;
 
 function resetAll(){
@@ -109,31 +109,31 @@ function update(){
 ctx.fillStyle="#1e90ff";
 ctx.fillRect(0,0,canvas.width,canvas.height);
 
-// porte
+// PORTE
 ctx.strokeStyle="white";ctx.lineWidth=4;
 ctx.strokeRect(goalTop.x,goalTop.y,goalTop.w,goalTop.h);
 ctx.strokeRect(goalBottom.x,goalBottom.y,goalBottom.w,goalBottom.h);
 
-// portieri movimento
+// PORTIERI
 keeperTop.x+=keeperTop.dir*2;
 if(keeperTop.x<goalTop.x+20||keeperTop.x>goalTop.x+goalTop.w-20) keeperTop.dir*=-1;
 
 keeperBottom.x+=keeperBottom.dir*2;
 if(keeperBottom.x<goalBottom.x+20||keeperBottom.x>goalBottom.x+goalBottom.w-20) keeperBottom.dir*=-1;
 
-// avversario più vicino
+// AVVERSARIO PIÙ VICINO (ORA PIÙ VELOCE)
 let closest=teamR.reduce((a,b)=>{
-return Math.hypot(b.x-controlled.x,b.y-controlled.y)<Math.hypot(a.x-controlled.x,a.y-controlled.y)?b:a;
+return Math.hypot(b.x-controlled.x,b.y-controlled.y)<
+       Math.hypot(a.x-controlled.x,a.y-controlled.y)?b:a;
 });
 
-// attacco lento
 if(ball.owner==="Y"){
 let dx=controlled.x-closest.x;
 let dy=controlled.y-closest.y;
 let d=Math.hypot(dx,dy);
 if(d>5){
-closest.x+=dx/d*0.6;
-closest.y+=dy/d*0.6;
+closest.x+=dx/d*1.0;
+closest.y+=dy/d*1.0;
 }
 if(d<20){
 ball.owner="R";
@@ -141,7 +141,7 @@ document.getElementById("midfield").style.display="block";
 }
 }
 
-// palla
+// PALLA
 if(ball.owner==="Y"){
 ball.x=controlled.x;
 ball.y=controlled.y-25;
@@ -150,11 +150,11 @@ ball.x+=ball.vx;
 ball.y+=ball.vy;
 }
 
-// parata portieri
+// PARATE
 if(Math.abs(ball.x-keeperTop.x)<18 && Math.abs(ball.y-keeperTop.y)<18) resetAll();
 if(Math.abs(ball.x-keeperBottom.x)<18 && Math.abs(ball.y-keeperBottom.y)<18) resetAll();
 
-// goal
+// GOL
 if(ball.y<goalTop.y+goalTop.h && ball.x>goalTop.x && ball.x<goalTop.x+goalTop.w){
 scoreY++;resetAll();
 }
@@ -162,7 +162,7 @@ if(ball.y>goalBottom.y && ball.x>goalBottom.x && ball.x<goalBottom.x+goalBottom.
 scoreR++;resetAll();
 }
 
-// disegno
+// DISEGNO
 teamY.forEach(p=>drawPlayer(p,"yellow"));
 teamR.forEach(p=>drawPlayer(p,"red"));
 drawPlayer(keeperTop,"blue");
@@ -219,8 +219,13 @@ ball.owner="Y";
 
 // TIMER
 setInterval(()=>{
-if(time>0){time--;document.getElementById("time").innerText=time;}
-else{gameOver=true;document.getElementById("restart").style.display="block";}
+if(time>0){
+time--;
+document.getElementById("time").innerText=time;
+}else{
+gameOver=true;
+document.getElementById("restart").style.display="block";
+}
 },1000);
 
 restart.onclick=()=>{
