@@ -120,7 +120,7 @@ loop();
 }
 
 function setupTeams(){
-teamY=[
+teamY=[e
 {x:canvas.width/2,y:canvas.height-160},
 {x:canvas.width/2-120,y:canvas.height-240},
 {x:canvas.width/2+120,y:canvas.height-240}
@@ -220,26 +220,36 @@ let o=(ball.owner==="Y")?ctrlY:ctrlR;
 ball.x=o.x;
 ball.y=o.y-20;
 }else{
-ball.x+=ball.vx;
-ball.y+=ball.vy;
+/* PASSA (si muove SOLO la palla) */
+function passBall(team){
+if(ball.owner!==team) return;
+
+let arr = (team==="Y") ? teamY : teamR;
+let current = (team==="Y") ? ctrlY : ctrlR;
+
+let target = arr.find(p => p !== current);
+if(!target) return;
+
+ball.owner = null;
+
+let dx = target.x - current.x;
+let dy = target.y - current.y;
+let d = Math.hypot(dx,dy);
+
+ball.vx = dx / d * 6;
+ball.vy = dy / d * 6;
+
+let passInterval = setInterval(()=>{
+if(Math.hypot(ball.x - target.x, ball.y - target.y) < 15){
+ball.owner = team;
+ball.vx = 0;
+ball.vy = 0;
+if(team==="Y") ctrlY = target;
+else ctrlR = target;
+clearInterval(passInterval);
 }
-
-/* GOAL */
-if(ball.y<goalTop.y+goalTop.h){
-scoreY++; setupTeams();
+},16);
 }
-if(ball.y>goalBottom.y){
-scoreR++; setupTeams();
-}
-
-/* DISEGNO */
-teamY.forEach(p=>draw(p,18,"yellow"));
-teamR.forEach(p=>draw(p,18,"red"));
-draw(ball,7,"white");
-
-scoreY.innerText=scoreY;
-scoreR.innerText=scoreR;
-
 requestAnimationFrame(loop);
 }
 
