@@ -2,56 +2,29 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Waterpolo Legends</title>
-
 <style>
-body { margin:0; background:#1e90ff; overflow:hidden; font-family:Arial; }
-canvas { display:block; }
-
-#ui {
-  position:fixed;
-  top:10px; left:10px;
-  color:white; font-size:18px;
-}
-
-#controls {
-  position:fixed;
-  bottom:15px;
-  width:100%;
-  display:flex;
-  justify-content:space-around;
-}
-
-.btn {
-  background:white;
-  padding:12px;
-  border-radius:10px;
-  font-size:16px;
-}
-
-#restart {
-  display:none;
-  position:fixed;
-  top:50%; left:50%;
-  transform:translate(-50%,-50%);
-  padding:15px 25px;
-  font-size:20px;
-}
+body{margin:0;background:#1e90ff;overflow:hidden;font-family:Arial}
+canvas{display:block}
+#ui{position:fixed;top:10px;left:10px;color:white;font-size:18px}
+#controls{position:fixed;bottom:15px;width:100%;display:flex;justify-content:space-around}
+.btn{background:white;padding:12px;border-radius:10px}
+#restart{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:15px 25px}
 </style>
 </head>
-
 <body>
+
 <canvas id="game"></canvas>
 
 <div id="ui">
 ⏱️ <span id="time">60</span> |
-🏆 <span id="score">0</span>
+🟡 <span id="scoreY">0</span> - 🔴 <span id="scoreR">0</span>
 </div>
 
 <div id="controls">
-<button class="btn" id="back">⬇ Indietro</button>
-<button class="btn" id="forward">⬆ Avanti</button>
+<button class="btn" id="back">⬇</button>
+<button class="btn" id="forward">⬆</button>
 <button class="btn" id="pass">PASSA</button>
 <button class="btn" id="shoot">TIRA</button>
 </div>
@@ -59,151 +32,169 @@ canvas { display:block; }
 <button id="restart">Ricomincia</button>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+canvas.width=innerWidth;
+canvas.height=innerHeight;
 
-let time = 60;
-let score = 0;
-let gameOver = false;
+let time=60;
+let scoreY=0;
+let scoreR=0;
+let gameOver=false;
 
-// GIOCATORI
-let player = { x: canvas.width/2, y: canvas.height-140, hasBall:true };
-let mate1 = { x: canvas.width/2-80, y: canvas.height-200 };
-let mate2 = { x: canvas.width/2+80, y: canvas.height-200 };
+// SQUADRA GIALLA
+let teamY=[
+{x:canvas.width/2,y:canvas.height-150,hasBall:true},
+{x:canvas.width/2-100,y:canvas.height-220,hasBall:false},
+{x:canvas.width/2+100,y:canvas.height-220,hasBall:false}
+];
 
-let enemy1 = { x: canvas.width/2-60, y: canvas.height/2 };
-let enemy2 = { x: canvas.width/2+60, y: canvas.height/2 };
-let enemy3 = { x: canvas.width/2, y: canvas.height/2+60 };
+let controlled=teamY[0];
 
-// PORTIERI
-let keeperTop = { x: canvas.width/2, y: 80, dir:1 };
-let keeperBottom = { x: canvas.width/2, y: canvas.height-80, dir:1 };
+// SQUADRA ROSSA
+let teamR=[
+{x:canvas.width/2,y:canvas.height/2},
+{x:canvas.width/2-100,y:canvas.height/2+60},
+{x:canvas.width/2+100,y:canvas.height/2+60}
+];
+
+let ball={x:controlled.x,y:controlled.y-25,vx:0,vy:0,owner:"Y"};
 
 // PORTE
-let goalTop = { x: canvas.width/2-100, y: 40, w:200, h:20 };
-let goalBottom = { x: canvas.width/2-100, y: canvas.height-40, w:200, h:20 };
+let goalTop={x:canvas.width/2-100,y:40,w:200,h:20};
+let goalBottom={x:canvas.width/2-100,y:canvas.height-40,w:200,h:20};
 
-// PALLA
-let ball = { x: player.x, y: player.y-25, vx:0, vy:0 };
+// PORTIERI
+let keeperTop={x:canvas.width/2,y:80,dir:1};
+let keeperBottom={x:canvas.width/2,y:canvas.height-80,dir:1};
 
 function drawPlayer(p,color){
-  ctx.fillStyle=color;
-  ctx.beginPath();
-  ctx.arc(p.x,p.y,18,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.fillStyle="#f2c9a0";
-  ctx.beginPath();
-  ctx.arc(p.x,p.y-26,10,0,Math.PI*2);
-  ctx.fill();
+ctx.fillStyle=color;
+ctx.beginPath();ctx.arc(p.x,p.y,18,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#f2c9a0";
+ctx.beginPath();ctx.arc(p.x,p.y-26,10,0,Math.PI*2);ctx.fill();
 }
 
-function draw(){
-  ctx.fillStyle="#1e90ff";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  ctx.strokeStyle="white";
-  ctx.lineWidth=4;
-  ctx.strokeRect(goalTop.x,goalTop.y,goalTop.w,goalTop.h);
-  ctx.strokeRect(goalBottom.x,goalBottom.y,goalBottom.w,goalBottom.h);
-
-  keeperTop.x += keeperTop.dir*2;
-  if(keeperTop.x<goalTop.x+20||keeperTop.x>goalTop.x+goalTop.w-20) keeperTop.dir*=-1;
-
-  keeperBottom.x += keeperBottom.dir*2;
-  if(keeperBottom.x<goalBottom.x+20||keeperBottom.x>goalBottom.x+goalBottom.w-20) keeperBottom.dir*=-1;
-
-  drawPlayer(player,"yellow");
-  drawPlayer(mate1,"yellow");
-  drawPlayer(mate2,"yellow");
-
-  drawPlayer(enemy1,"red");
-  drawPlayer(enemy2,"red");
-  drawPlayer(enemy3,"red");
-
-  drawPlayer(keeperTop,"blue");
-  drawPlayer(keeperBottom,"blue");
-
-  if(player.hasBall){
-    ball.x=player.x;
-    ball.y=player.y-25;
-  } else {
-    ball.x+=ball.vx;
-    ball.y+=ball.vy;
-  }
-
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(ball.x,ball.y,7,0,Math.PI*2);
-  ctx.fill();
-
-  // GOL
-  if(ball.y<goalTop.y+goalTop.h && ball.x>goalTop.x && ball.x<goalTop.x+goalTop.w){
-    score++;
-    reset();
-  }
-
-  // RUBA PALLA
-  [enemy1,enemy2,enemy3].forEach(e=>{
-    if(Math.abs(player.x-e.x)<25 && Math.abs(player.y-e.y)<25){
-      player.hasBall=false;
-    }
-  });
-
-  document.getElementById("score").innerText=score;
-  if(!gameOver) requestAnimationFrame(draw);
+function resetPositions(){
+teamY[0].x=canvas.width/2; teamY[0].y=canvas.height-150;
+teamY[1].x=canvas.width/2-100; teamY[1].y=canvas.height-220;
+teamY[2].x=canvas.width/2+100; teamY[2].y=canvas.height-220;
+teamY.forEach(p=>p.hasBall=false);
+teamY[0].hasBall=true;
+controlled=teamY[0];
+ball.owner="Y";
+ball.vx=0;ball.vy=0;
 }
 
-function reset(){
-  player.x=canvas.width/2;
-  player.y=canvas.height-140;
-  player.hasBall=true;
-  ball.vx=0; ball.vy=0;
+function update(){
+ctx.fillStyle="#1e90ff";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+// porte
+ctx.strokeStyle="white";ctx.lineWidth=4;
+ctx.strokeRect(goalTop.x,goalTop.y,goalTop.w,goalTop.h);
+ctx.strokeRect(goalBottom.x,goalBottom.y,goalBottom.w,goalBottom.h);
+
+// portieri
+keeperTop.x+=keeperTop.dir*2;
+if(keeperTop.x<goalTop.x+20||keeperTop.x>goalTop.x+goalTop.w-20) keeperTop.dir*=-1;
+
+keeperBottom.x+=keeperBottom.dir*2;
+if(keeperBottom.x<goalBottom.x+20||keeperBottom.x>goalBottom.x+goalBottom.w-20) keeperBottom.dir*=-1;
+
+drawPlayer(keeperTop,"blue");
+drawPlayer(keeperBottom,"blue");
+
+// squadra gialla
+teamY.forEach(p=>drawPlayer(p,"yellow"));
+// squadra rossa
+teamR.forEach(p=>drawPlayer(p,"red"));
+
+// movimento AI rossi se hanno palla
+if(ball.owner==="R"){
+let target=goalBottom;
+ball.y+=3;
+if(ball.y>goalBottom.y && ball.x>goalBottom.x && ball.x<goalBottom.x+goalBottom.w){
+scoreR++;
+resetPositions();
+}
+}
+
+// RUBA PALLA
+teamR.forEach(r=>{
+if(Math.abs(controlled.x-r.x)<25 && Math.abs(controlled.y-r.y)<25 && ball.owner==="Y"){
+ball.owner="R";
+}
+});
+
+// posizione palla
+if(ball.owner==="Y"){
+ball.x=controlled.x;
+ball.y=controlled.y-25;
+}
+
+ctx.fillStyle="white";
+ctx.beginPath();ctx.arc(ball.x,ball.y,7,0,Math.PI*2);ctx.fill();
+
+document.getElementById("scoreY").innerText=scoreY;
+document.getElementById("scoreR").innerText=scoreR;
+
+if(!gameOver) requestAnimationFrame(update);
 }
 
 // CONTROLLI
-forward.onclick=()=>player.y-=20;
-back.onclick=()=>player.y+=20;
+forward.onclick=()=>controlled.y-=20;
+back.onclick=()=>controlled.y+=20;
 
 pass.onclick=()=>{
-  if(player.hasBall){
-    player.hasBall=false;
-    ball.vx=(mate1.x-player.x)/20;
-    ball.vy=(mate1.y-player.y)/20;
-  }
+if(ball.owner==="Y"){
+let mates=teamY.filter(p=>p!==controlled);
+let target=mates.reduce((a,b)=>Math.abs(b.y-controlled.y)<Math.abs(a.y-controlled.y)?b:a);
+controlled.hasBall=false;
+target.hasBall=true;
+controlled=target;
+ball.owner="Y";
+}
 };
 
 shoot.onclick=()=>{
-  if(player.hasBall){
-    player.hasBall=false;
-    ball.vx=0;
-    ball.vy=-10;
-  }
+if(ball.owner==="Y"){
+ball.owner="shot";
+ball.vx=0;
+ball.vy=-10;
+let interval=setInterval(()=>{
+ball.y+=ball.vy;
+if(ball.y<goalTop.y+goalTop.h && ball.x>goalTop.x && ball.x<goalTop.x+goalTop.w){
+scoreY++;
+clearInterval(interval);
+resetPositions();
+}
+if(ball.y<0) clearInterval(interval);
+},16);
+}
 };
 
 // TIMER
 setInterval(()=>{
-  if(time>0){
-    time--;
-    document.getElementById("time").innerText=time;
-  } else {
-    gameOver=true;
-    document.getElementById("restart").style.display="block";
-  }
+if(time>0){
+time--;
+document.getElementById("time").innerText=time;
+}else{
+gameOver=true;
+document.getElementById("restart").style.display="block";
+}
 },1000);
 
 restart.onclick=()=>{
-  score=0;
-  time=60;
-  gameOver=false;
-  restart.style.display="none";
-  reset();
-  draw();
+scoreY=0;scoreR=0;time=60;
+gameOver=false;
+document.getElementById("restart").style.display="none";
+resetPositions();
+update();
 };
 
-draw();
+resetPositions();
+update();
 </script>
 </body>
 </html>
