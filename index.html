@@ -5,16 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Waterpolo Legends</title>
 
-<link rel="apple-touch-icon" href="IMG_4537.jpeg">
-<link rel="icon" href="IMG_4537.jpeg">
-
 <style>
-body { margin:0; background:#0b5ed7; overflow:hidden; font-family:Arial; }
+body { margin:0; background:#1e90ff; overflow:hidden; font-family:Arial; }
 canvas { display:block; }
+
 #ui {
-  position:fixed; top:10px; left:10px;
+  position:fixed;
+  top:10px; left:10px;
   color:white; font-size:18px;
 }
+
+#controls {
+  position:fixed;
+  bottom:15px;
+  width:100%;
+  display:flex;
+  justify-content:space-around;
+}
+
+.btn {
+  background:white;
+  padding:12px;
+  border-radius:10px;
+  font-size:16px;
+}
+
 #restart {
   display:none;
   position:fixed;
@@ -22,15 +37,25 @@ canvas { display:block; }
   transform:translate(-50%,-50%);
   padding:15px 25px;
   font-size:20px;
-  background:white;
-  border-radius:10px;
 }
 </style>
 </head>
 
 <body>
 <canvas id="game"></canvas>
-<div id="ui">⏱️ <span id="time">60</span> | 🏆 <span id="score">0</span></div>
+
+<div id="ui">
+⏱️ <span id="time">60</span> |
+🏆 <span id="score">0</span>
+</div>
+
+<div id="controls">
+<button class="btn" id="back">⬇ Indietro</button>
+<button class="btn" id="forward">⬆ Avanti</button>
+<button class="btn" id="pass">PASSA</button>
+<button class="btn" id="shoot">TIRA</button>
+</div>
+
 <button id="restart">Ricomincia</button>
 
 <script>
@@ -43,94 +68,122 @@ let time = 60;
 let score = 0;
 let gameOver = false;
 
-// Player
-let player = { x: canvas.width/2, y: canvas.height-140 };
+// GIOCATORI
+let player = { x: canvas.width/2, y: canvas.height-140, hasBall:true };
+let mate1 = { x: canvas.width/2-80, y: canvas.height-200 };
+let mate2 = { x: canvas.width/2+80, y: canvas.height-200 };
 
-// Ball
-let ball = { x: player.x, y: player.y-20, vx:0, vy:0, shooting:false };
-let dragStart = null;
+let enemy1 = { x: canvas.width/2-60, y: canvas.height/2 };
+let enemy2 = { x: canvas.width/2+60, y: canvas.height/2 };
+let enemy3 = { x: canvas.width/2, y: canvas.height/2+60 };
 
-// Goal
-let goal = { x: canvas.width/2-90, y: 40, w:180, h:20 };
+// PORTIERI
+let keeperTop = { x: canvas.width/2, y: 80, dir:1 };
+let keeperBottom = { x: canvas.width/2, y: canvas.height-80, dir:1 };
 
-function drawWater(){
-  ctx.fillStyle="#1e90ff";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-}
+// PORTE
+let goalTop = { x: canvas.width/2-100, y: 40, w:200, h:20 };
+let goalBottom = { x: canvas.width/2-100, y: canvas.height-40, w:200, h:20 };
 
-function drawGoal(){
-  ctx.strokeStyle="white";
-  ctx.lineWidth=4;
-  ctx.strokeRect(goal.x,goal.y,goal.w,goal.h);
-}
+// PALLA
+let ball = { x: player.x, y: player.y-25, vx:0, vy:0 };
 
-function drawPlayer(p){
-  // body
-  ctx.fillStyle="yellow";
+function drawPlayer(p,color){
+  ctx.fillStyle=color;
   ctx.beginPath();
   ctx.arc(p.x,p.y,18,0,Math.PI*2);
   ctx.fill();
 
-  // head
-  ctx.fillStyle="#ffcc99";
+  ctx.fillStyle="#f2c9a0";
   ctx.beginPath();
-  ctx.arc(p.x,p.y-28,10,0,Math.PI*2);
+  ctx.arc(p.x,p.y-26,10,0,Math.PI*2);
   ctx.fill();
-
-  // arms
-  ctx.strokeStyle="yellow";
-  ctx.lineWidth=4;
-  ctx.beginPath();
-  ctx.moveTo(p.x-20,p.y);
-  ctx.lineTo(p.x+20,p.y);
-  ctx.stroke();
 }
 
-function drawBall(){
+function draw(){
+  ctx.fillStyle="#1e90ff";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.strokeStyle="white";
+  ctx.lineWidth=4;
+  ctx.strokeRect(goalTop.x,goalTop.y,goalTop.w,goalTop.h);
+  ctx.strokeRect(goalBottom.x,goalBottom.y,goalBottom.w,goalBottom.h);
+
+  keeperTop.x += keeperTop.dir*2;
+  if(keeperTop.x<goalTop.x+20||keeperTop.x>goalTop.x+goalTop.w-20) keeperTop.dir*=-1;
+
+  keeperBottom.x += keeperBottom.dir*2;
+  if(keeperBottom.x<goalBottom.x+20||keeperBottom.x>goalBottom.x+goalBottom.w-20) keeperBottom.dir*=-1;
+
+  drawPlayer(player,"yellow");
+  drawPlayer(mate1,"yellow");
+  drawPlayer(mate2,"yellow");
+
+  drawPlayer(enemy1,"red");
+  drawPlayer(enemy2,"red");
+  drawPlayer(enemy3,"red");
+
+  drawPlayer(keeperTop,"blue");
+  drawPlayer(keeperBottom,"blue");
+
+  if(player.hasBall){
+    ball.x=player.x;
+    ball.y=player.y-25;
+  } else {
+    ball.x+=ball.vx;
+    ball.y+=ball.vy;
+  }
+
   ctx.fillStyle="white";
   ctx.beginPath();
   ctx.arc(ball.x,ball.y,7,0,Math.PI*2);
   ctx.fill();
+
+  // GOL
+  if(ball.y<goalTop.y+goalTop.h && ball.x>goalTop.x && ball.x<goalTop.x+goalTop.w){
+    score++;
+    reset();
+  }
+
+  // RUBA PALLA
+  [enemy1,enemy2,enemy3].forEach(e=>{
+    if(Math.abs(player.x-e.x)<25 && Math.abs(player.y-e.y)<25){
+      player.hasBall=false;
+    }
+  });
+
+  document.getElementById("score").innerText=score;
+  if(!gameOver) requestAnimationFrame(draw);
 }
 
 function reset(){
-  ball.shooting=false;
-  ball.vx=0;
-  ball.vy=0;
-  ball.x=player.x;
-  ball.y=player.y-20;
+  player.x=canvas.width/2;
+  player.y=canvas.height-140;
+  player.hasBall=true;
+  ball.vx=0; ball.vy=0;
 }
 
-function update(){
-  if(gameOver) return;
+// CONTROLLI
+forward.onclick=()=>player.y-=20;
+back.onclick=()=>player.y+=20;
 
-  drawWater();
-  drawGoal();
-
-  if(ball.shooting){
-    ball.x+=ball.vx;
-    ball.y+=ball.vy;
-
-    // goal
-    if(ball.y<goal.y+goal.h &&
-       ball.x>goal.x && ball.x<goal.x+goal.w){
-      score++;
-      reset();
-    }
-
-    if(ball.y<0) reset();
-  } else {
-    ball.x=player.x;
-    ball.y=player.y-20;
+pass.onclick=()=>{
+  if(player.hasBall){
+    player.hasBall=false;
+    ball.vx=(mate1.x-player.x)/20;
+    ball.vy=(mate1.y-player.y)/20;
   }
+};
 
-  drawPlayer(player);
-  drawBall();
+shoot.onclick=()=>{
+  if(player.hasBall){
+    player.hasBall=false;
+    ball.vx=0;
+    ball.vy=-10;
+  }
+};
 
-  document.getElementById("score").innerText=score;
-  requestAnimationFrame(update);
-}
-
+// TIMER
 setInterval(()=>{
   if(time>0){
     time--;
@@ -141,32 +194,16 @@ setInterval(()=>{
   }
 },1000);
 
-canvas.addEventListener("touchstart",e=>{
-  const t=e.touches[0];
-  dragStart={x:t.clientX,y:t.clientY};
-});
-
-canvas.addEventListener("touchend",e=>{
-  if(!dragStart || ball.shooting) return;
-
-  const dx=dragStart.x-e.changedTouches[0].clientX;
-  const dy=dragStart.y-e.changedTouches[0].clientY;
-
-  ball.vx=-dx*0.05;
-  ball.vy=-dy*0.05;
-  ball.shooting=true;
-  dragStart=null;
-});
-
-document.getElementById("restart").onclick=()=>{
+restart.onclick=()=>{
   score=0;
   time=60;
   gameOver=false;
-  document.getElementById("restart").style.display="none";
+  restart.style.display="none";
   reset();
+  draw();
 };
 
-update();
+draw();
 </script>
 </body>
 </html>
